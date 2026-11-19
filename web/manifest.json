@@ -1,0 +1,11 @@
+{
+  "name": "ERP",
+  "short_name": "ERP",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#1E5BD8",
+  "description": "ERP empresarial",
+  "orientation": "portrait-primary",
+  "prefer_related_applications": false
+}

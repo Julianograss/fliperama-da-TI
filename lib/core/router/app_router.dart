@@ -6,12 +6,20 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/data/auth_repository.dart';
 import '../../features/auth/presentation/login_page.dart';
 import '../../features/auth/presentation/register_page.dart';
+import '../../features/cash/presentation/cash_page.dart';
+import '../../features/employees/presentation/employees_page.dart';
+import '../../features/finance/presentation/accounts_page.dart';
 import '../../features/home/presentation/app_shell.dart';
 import '../../features/home/presentation/dashboard_page.dart';
+import '../../features/inventory/presentation/entries_page.dart';
+import '../../features/inventory/presentation/exits_page.dart';
 import '../../features/inventory/presentation/products_page.dart';
-import '../../features/sectors/presentation/sectors_page.dart';
-import '../../shared/module_placeholder_page.dart';
-import 'package:flutter/material.dart';
+import '../../features/machines/presentation/machines_page.dart';
+import '../../features/reports/presentation/reports_page.dart';
+import '../../features/sales/presentation/pdv_page.dart';
+import '../../features/settings/presentation/settings_page.dart';
+import '../../features/shifts/presentation/shifts_page.dart';
+import '../../features/suppliers/presentation/suppliers_page.dart';
 
 /// Faz o GoRouter reavaliar o redirect quando o login/logout acontece.
 class _AuthRefresh extends ChangeNotifier {
@@ -48,36 +56,21 @@ final GoRouter appRouter = GoRouter(
           AppShell(location: state.uri.path, child: child),
       routes: [
         GoRoute(path: '/', builder: (_, __) => const DashboardPage()),
+        GoRoute(path: '/pdv', builder: (_, __) => const PdvPage()),
         GoRoute(path: '/estoque', builder: (_, __) => const ProductsPage()),
-        GoRoute(path: '/setores', builder: (_, __) => const SectorsPage()),
+        GoRoute(path: '/entradas', builder: (_, __) => const EntriesPage()),
+        GoRoute(path: '/saidas', builder: (_, __) => const ExitsPage()),
+        GoRoute(path: '/maquinas', builder: (_, __) => const MachinesPage()),
         GoRoute(
-          path: '/compras',
-          builder: (_, __) => const ModulePlaceholderPage(
-            title: 'Compras',
-            icon: Icons.shopping_cart_outlined,
-          ),
-        ),
+            path: '/fornecedores', builder: (_, __) => const SuppliersPage()),
         GoRoute(
-          path: '/vendas',
-          builder: (_, __) => const ModulePlaceholderPage(
-            title: 'Vendas',
-            icon: Icons.point_of_sale_outlined,
-          ),
-        ),
+            path: '/funcionarios', builder: (_, __) => const EmployeesPage()),
+        GoRoute(path: '/escalas', builder: (_, __) => const ShiftsPage()),
+        GoRoute(path: '/caixa', builder: (_, __) => const CashPage()),
+        GoRoute(path: '/contas', builder: (_, __) => const AccountsPage()),
+        GoRoute(path: '/relatorios', builder: (_, __) => const ReportsPage()),
         GoRoute(
-          path: '/financeiro',
-          builder: (_, __) => const ModulePlaceholderPage(
-            title: 'Financeiro',
-            icon: Icons.account_balance_outlined,
-          ),
-        ),
-        GoRoute(
-          path: '/rh',
-          builder: (_, __) => const ModulePlaceholderPage(
-            title: 'Recursos Humanos',
-            icon: Icons.groups_outlined,
-          ),
-        ),
+            path: '/configuracoes', builder: (_, __) => const SettingsPage()),
       ],
     ),
   ],

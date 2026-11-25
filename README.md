@@ -1,65 +1,71 @@
-# ERP Base
+# ERP Fliperamada TI
 
-Base de um ERP empresarial: **Flutter** + **Supabase** (auth e banco) + **Vercel** (hospedagem web).
+ERP em **Flutter** + **Supabase** (Auth, PostgreSQL, RLS) hospedado na **Vercel**.
+Tema gamer: fundo escuro, azul principal, roxo e ciano. Layout responsivo (menu lateral no desktop, gaveta no celular/tablet).
 
-Já inclui: login, cadastro, menu lateral com módulos (Dashboard, Estoque, Setores, Compras, Vendas, Financeiro, RH), CRUD básico de Setores e Produtos, e o schema do banco com RLS.
+As telas de **Login** e **Cadastro** (`lib/features/auth`) não foram alteradas.
 
-## 1. Preparar o projeto
+## Módulos
 
-O zip traz só a pasta `web/`. Gere as demais plataformas (Android, iOS...) sem sobrescrever nada:
+| Módulo | Quem acessa |
+|---|---|
+| Dashboard (cards, gráficos, últimas movimentações) | todos (financeiro só gerente/admin) |
+| PDV / Vendas (+ cancelamento) | admin, gerente, operador de caixa |
+| Produtos e Estoque | admin, gerente |
+| Entradas de Mercadorias | admin, gerente |
+| Saídas de Estoque | admin, gerente (manutenção também técnico) |
+| Máquinas Arcade (+ histórico de manutenção) | admin, gerente, técnico |
+| Fornecedores | admin, gerente |
+| Funcionários | admin edita; gerente consulta |
+| Escalas e Turnos + ponto | todos (turnos: gerente/admin editam) |
+| Controle de Caixa | admin, gerente, operador de caixa |
+| Contas a Pagar e Receber | admin, gerente |
+| Relatórios (8 tipos) | admin, gerente (histórico de manutenção: + técnico) |
+| Configurações | todos |
 
-```bash
-flutter create . --platforms=web,android,ios --project-name erp_base
-flutter pub get
-```
+## Como as regras de negócio são garantidas
 
-## 2. Supabase
+Tudo que é crítico roda **no banco** (`supabase/schema.sql`), não só na tela:
 
-1. Crie um projeto em https://supabase.com
-2. Abra **SQL Editor**, cole o conteúdo de `supabase/schema.sql` e execute.
-3. Em **Project Settings → API**, copie a *Project URL* e a *anon public key*.
-4. Copie `env.example.json` para `env.json` e preencha (esse arquivo não vai pro Git).
-5. (Opcional, para testar rápido) Em **Authentication → Providers → Email**, desative "Confirm email".
+- Venda exige caixa aberto do próprio operador (RPC `registrar_venda`).
+- Estoque nunca fica negativo (CHECK + validação nas RPCs); o saldo só muda por movimentação.
+- Um caixa aberto por funcionário (índice único parcial).
+- Desconto, sangria, estorno/cancelamento e ajuste manual: só gerente/admin.
+- Fechamento com divergência exige justificativa (`fechar_caixa`).
+- Sem exclusão física: triggers bloqueiam DELETE; movimentações são imutáveis; usa-se inativação/cancelamento.
+- Saída para manutenção exige máquina (CHECK + RPC).
+- Data, hora e responsável em todas as operações importantes.
+- Funcionário inativo não acessa nada: as funções de permissão ignoram inativos.
+- Senhas ficam só no Supabase Auth.
 
-## 3. Rodar localmente (VS Code)
+**Primeiro acesso:** o primeiro usuário cadastrado vira **administrador ativo**. Os demais ficam **inativos** (tela "Acesso pendente") até um administrador ativá-los em *Funcionários* e definir o nível de acesso.
 
-```bash
-flutter run -d chrome --dart-define-from-file=env.json
-```
+## Como rodar
 
-Ou use a configuração **ERP (Chrome)** em Run and Debug.
+1. Gere as plataformas que faltam (o zip traz só `web/`):
+   ```bash
+   flutter create . --platforms=web,android,ios --project-name erp_base
+   flutter pub get
+   ```
+2. No Supabase: crie o projeto, abra o **SQL Editor**, rode `supabase/schema.sql` inteiro.
+3. Copie `env.example.json` para `env.json` e preencha URL e anon key.
+4. Rode:
+   ```bash
+   flutter run -d chrome --dart-define-from-file=env.json
+   ```
+5. Cadastre-se pela tela de cadastro (será o administrador) e use o sistema.
 
-## 4. GitHub
+## Deploy (GitHub + Vercel)
 
-```bash
-git init
-git add .
-git commit -m "Base do ERP"
-git branch -M main
-git remote add origin https://github.com/SEU_USUARIO/SEU_REPO.git
-git push -u origin main
-```
+Suba para o GitHub, importe na Vercel e defina `SUPABASE_URL` e `SUPABASE_ANON_KEY`.
+No Supabase, em *Authentication → URL Configuration*, coloque a URL da Vercel.
+Para testar rápido, desative "Confirm email" em *Authentication → Providers → Email*.
 
-## 5. Deploy na Vercel
+## Pontos de atenção / próximos passos
 
-1. Em https://vercel.com, **Add New → Project** e importe o repositório.
-2. Em **Environment Variables**, crie `SUPABASE_URL` e `SUPABASE_ANON_KEY`.
-3. Deploy. O `vercel.json` + `vercel_build.sh` instalam o Flutter e geram o build web (o primeiro deploy demora alguns minutos).
-4. No Supabase, em **Authentication → URL Configuration**, coloque a URL da Vercel em *Site URL*.
-
-## Estrutura
-
-```
-lib/
-  core/        config (env), tema e rotas (go_router)
-  features/    auth, home (shell + dashboard), inventory, sectors
-  shared/      widgets reutilizáveis
-supabase/schema.sql   tabelas, triggers e políticas RLS
-```
-
-## Próximos passos sugeridos
-
-- Definir o ramo da empresa e ajustar os módulos
-- Movimentações de estoque (entrada/saída) usando a tabela `stock_movements`
-- Permissões por papel (`profiles.role`) e por setor nas políticas RLS
-- Cadastro de clientes e fornecedores
+- O código não foi compilado no ambiente em que foi gerado: se o primeiro `flutter run` acusar erro, corrija conforme a mensagem.
+- Autorização de gerente é por **perfil de quem está logado** (o gerente faz a operação ou assume o terminal). Autorização por senha de gerente sobre outro operador pode ser um próximo passo.
+- Gerentes enxergam o salário na tela de Funcionários (política RLS de leitura); restrinja se necessário.
+- Imagem do produto: hoje é um campo de URL; upload via Supabase Storage fica para uma próxima etapa.
+- Faturamento/estoque/contas atrasadas: "Atrasado" é calculado pela data de vencimento.
+- Fuso usado nos relatórios: America/Sao_Paulo.

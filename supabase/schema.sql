@@ -1,9 +1,16 @@
 -- =====================================================================
 -- ERP Fliperamada TI - schema completo (Supabase / PostgreSQL)
 -- Rode inteiro no SQL Editor de um projeto novo.
--- Se você já rodou o schema da versão anterior (profiles/sectors/products),
--- descomente as linhas abaixo antes:
--- drop table if exists public.stock_movements, public.products, public.sectors, public.profiles cascade;
+--
+-- MODELO OFICIAL DE IDENTIDADE:
+--   auth.users             = credenciais gerenciadas pelo Supabase Auth
+--   public.colaboradores   = dados do funcionário e vínculo com auth.users
+--   public.perfis_acesso   = catálogo dos quatro perfis de autorização
+--
+-- Este projeto NÃO usa public.profiles, public.products, public.sectors ou
+-- public.stock_movements. Essas tabelas pertencem a uma versão antiga e não
+-- devem ser usadas junto com o modelo atual. Para um banco já existente,
+-- execute também supabase/repair_existing_project.sql.
 -- =====================================================================
 
 -- ========== PERFIS DE ACESSO ==========
@@ -935,7 +942,12 @@ create policy "caixa: leitura" on public.caixas for select to authenticated
   using (colaborador_id = public.meu_colaborador_id() or public.tem_perfil('administrador','gerente'));
 drop policy if exists "movcaixa: leitura" on public.movimentacoes_caixa;
 create policy "movcaixa: leitura" on public.movimentacoes_caixa for select to authenticated
-  using (exists (select 1 from public.caixas c where c.id = movimentacoes_caixa.caixa_id));
+  using (exists (
+    select 1 from public.caixas c
+    where c.id = movimentacoes_caixa.caixa_id
+      and (c.colaborador_id = public.meu_colaborador_id()
+           or public.tem_perfil('administrador','gerente'))
+  ));
 
 -- vendas e itens (escrita só por RPC)
 drop policy if exists "vendas: leitura" on public.vendas;
@@ -943,7 +955,12 @@ create policy "vendas: leitura" on public.vendas for select to authenticated
   using (colaborador_id = public.meu_colaborador_id() or public.tem_perfil('administrador','gerente'));
 drop policy if exists "itens: leitura" on public.itens_venda;
 create policy "itens: leitura" on public.itens_venda for select to authenticated
-  using (exists (select 1 from public.vendas v where v.id = itens_venda.venda_id));
+  using (exists (
+    select 1 from public.vendas v
+    where v.id = itens_venda.venda_id
+      and (v.colaborador_id = public.meu_colaborador_id()
+           or public.tem_perfil('administrador','gerente'))
+  ));
 
 -- movimentacoes_estoque (escrita só por RPC)
 drop policy if exists "movest: leitura" on public.movimentacoes_estoque;
@@ -962,6 +979,35 @@ create policy "contas: atualiza" on public.contas_financeiras for update to auth
   using (public.tem_perfil('administrador','gerente')) with check (public.tem_perfil('administrador','gerente'));
 
 -- ========== PERMISSÕES DE EXECUÇÃO ==========
+-- GRANT é necessário antes do RLS: a policy filtra linhas, mas não concede
+-- o privilégio SQL básico para consultar a tabela.
+grant usage on schema public to authenticated;
+grant select on
+  public.perfis_acesso,
+  public.colaboradores,
+  public.fornecedores,
+  public.produtos,
+  public.maquinas_arcade,
+  public.escalas_turnos,
+  public.registros_ponto,
+  public.caixas,
+  public.movimentacoes_caixa,
+  public.vendas,
+  public.itens_venda,
+  public.movimentacoes_estoque,
+  public.contas_financeiras
+to authenticated;
+
+grant insert, update on
+  public.fornecedores,
+  public.produtos,
+  public.maquinas_arcade,
+  public.escalas_turnos,
+  public.contas_financeiras
+to authenticated;
+
+grant select on public.vw_fluxo_financeiro to authenticated;
+
 revoke execute on all functions in schema public from public, anon;
 grant  execute on all functions in schema public to authenticated;
 revoke all on public.vw_fluxo_financeiro from anon;
